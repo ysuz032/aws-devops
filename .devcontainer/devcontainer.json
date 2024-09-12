@@ -3,7 +3,10 @@
 {
 	"name": "aws-devops",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/base:jammy",
+	"build": {
+        // Path is relative to the devcontainer.json file.
+        "dockerfile": "Dockerfile"
+    },
 
 	// container name
 	"runArgs": [
@@ -12,7 +15,9 @@
 	],
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
-	"features": {},
+	"features": {
+		"ghcr.io/devcontainers/features/terraform:1": {}
+	},
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	"forwardPorts": [],
@@ -23,7 +28,10 @@
 	// Configure tool-specific properties. e.g. Extensions to add to the dev container.
 	"customizations": {
 		"vscode": {
-			"extensions": []
+			"extensions": [
+				"hashicorp.terraform",
+				"mhutchie.git-graph"
+			]
 		}
 	},
 
