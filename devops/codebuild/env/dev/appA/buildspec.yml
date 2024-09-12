@@ -1,0 +1,38 @@
+version: 0.2
+
+# input parameter:
+#  - REPOSITORY_NAME : The name of ECR private repository
+#  - APP_NAME       : Name of container application to update image
+env:
+  variables:
+    foo: foo-variable
+phases:
+  install:
+    runtime-versions:
+      golang: 1.x
+    commands:
+      - echo Install toolchain...
+      - chmod +x setup.sh && ./setup.sh
+  pre_build:
+    commands:
+      - AWS_ACCOUNT_ID=$(echo ${CODEBUILD_BUILD_ARN} | cut -f 5 -d :)
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - REPOSITORY_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$REPOSITORY_NAME" # i.e. <account-id>.dkr.ecr.<region>.amazonaws.com/<REPOSITORY_NAME>
+      - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION}
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - make docker-build
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker image...
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - echo Writing image definitions file...
+      - printf '[{"name":"%s","imageUri":"%s"}]"' $APP_NAME $REPOSITORY_URI:$IMAGE_TAG > devops/codebuild/env/dev/imagedefinitions.json
+artifacts:
+  files:
+    - devops/codebuild/env/dev/imagedefinitions.json
+  discard-paths: no
