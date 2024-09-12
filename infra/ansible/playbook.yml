@@ -1,0 +1,14 @@
+---
+- hosts: all
+  pre_tasks:
+    - name: Clone application repository
+      git:
+        repo: "{{ app_repository_url }}"
+        dest: "/home/ec2-user/apps"
+
+  roles:
+    - role: deploy_app
+      vars:
+        app_name: "app"
+        app_directory: "apps/app/src"
+        binary_name: "app"
