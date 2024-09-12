@@ -57,6 +57,12 @@ module "iam_eventbridge" {
   policy_name = "${var.name_prefix}-policy-eventbridge-devops"
 }
 
+module "iam_lambda" {
+  source      = "../../../../modules/iam-lambda"
+  role_name   = "${var.name_prefix}-role-lambda-devops-default"
+  policy_name = "${var.name_prefix}-policy-lambda-devops"
+}
+
 # CloudWatch EventBus
 module "event_bus" {
   source         = "../../../../modules/eventbus"
@@ -156,6 +162,58 @@ module "eventbridge_appB" {
   rule_name       = "${var.name_prefix}-event-codecommit-push-appB"
   pipeline_arn    = module.codepipeline_appB.pipeline_arn
   codecommit_repo = local.repo_name.appB
+  branch          = var.repo_branch
+  aws_region      = var.aws_region
+  aws_account_id  = data.aws_caller_identity.current.account_id
+  role_arn        = module.iam_eventbridge.role_arn
+}
+
+# SPA
+module "codebuild_web" {
+  source              = "../../../../modules/codebuild"
+  project_name        = "${var.name_prefix}-codebuild-web"
+  build_timeout       = 15
+  codecommit_repo_url = local.repo_url.web
+  buildspec           = local.build_spec.web
+  build_bucket        = module.s3_bucket_codebuild.name
+  vpc_id              = var.vpc_id
+  subnets             = var.subnets
+  security_group_ids  = var.security_group_ids
+  role_arn            = module.iam_codebuild.role_arn
+  ecr_repo_name       = null
+  application_names   = []
+}
+
+module "lambda_web" {
+  source         = "../../../../modules/lambda"
+  function_name  = "${var.name_prefix}-lambda-devops-deploy-web"
+  role_arn       = module.iam_lambda.role_arn
+  source_app_dir = "devops/codepipeline/lambda-devops-deploy-web"
+  runtime        = var.lambda_runtime
+  handler        = "index.handler"
+}
+
+module "codepipeline_web" {
+  source                 = "../../../../modules/codepipeline-spa"
+  pipeline_name          = "${var.name_prefix}-codepipeline-web"
+  artifact_bucket        = module.s3_bucket_codepipeline.name
+  role_arn               = module.iam_codepipeline.role_arn
+  codecommit_role_arn    = null
+  codecommit_repo        = local.repo_name.web
+  branch                 = var.repo_branch
+  codebuild_project_name = module.codebuild_web.project_name
+  deploy_target_bucket   = var.cloudfront_s3_bucket
+  lambda_function_name   = module.lambda_web.lambda_function_name
+  distribution_id        = var.cloudfront_distribution_id
+}
+
+module "eventbridge_web" {
+  source          = "../../../../modules/eventbridge"
+  event_bus_name  = module.event_bus.name
+  rule_name       = "${var.name_prefix}-event-codecommit-push-web"
+  target_id       = "codepipeline"
+  target_arn      = module.codepipeline_web.pipeline_arn
+  codecommit_repo = local.repo_name.web
   branch          = var.repo_branch
   aws_region      = var.aws_region
   aws_account_id  = data.aws_caller_identity.current.account_id
