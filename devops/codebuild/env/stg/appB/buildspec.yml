@@ -1,0 +1,34 @@
+version: 0.2
+
+env:
+  variables:
+    APP_DIR: apps/app
+    ENV: stg
+phases:
+  install:
+    runtime-versions:
+      golang: 1.x
+  pre_build:
+    commands:
+      - echo pre_build started...
+      - root_dir=$(pwd)
+      - mkdir -p ./dist
+  build:
+    commands:
+      # ビルド
+      - echo Build started on `date`
+      - echo Building the app...
+      - make clean build package
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo copy appspec.yml
+      - cp -f devops/codedeploy/env/$ENV/appspec.yml appspec.yml
+      - echo copy scripts/* 
+      - mkdir -p scripts && cp -f devops/codedeploy/env/$ENV/scripts/* scripts/
+artifacts:
+  files:
+    - dist/*
+    - appspec.yml
+    - scripts/*
+  discard-paths: no

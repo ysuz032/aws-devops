@@ -1,0 +1,42 @@
+os: linux
+files:
+  # binary
+  - source: ./dist/app
+    destination: /usr/local/app
+  # env
+  - source: ./dist/app.env
+    destination: /usr/local/etc
+  # config
+  - source: ./dist/config.toml
+    destination: /usr/local/app
+file_exists_behavior: OVERWRITE
+hooks:
+  ApplicationStop:
+    - location: scripts/stop_apps.sh
+      timeout: 300
+      runas: root
+  BeforeInstall:
+    - location: scripts/setup.sh
+      timeout: 300
+      runas: root
+    - location: scripts/install_dependencies.sh
+      timeout: 300
+      runas: root
+  AfterInstall:
+    - location: scripts/chmod.sh
+      timeout: 300
+      runas: root
+    - location: scripts/update_env_file.sh
+      timeout: 300
+      runas: root
+    - location: scripts/update_systemd_unitfile.sh
+      timeout: 300
+      runas: root
+  ApplicationStart:
+    - location: scripts/start_apps.sh
+      timeout: 300
+      runas: root
+  ValidateService:
+    - location: scripts/validate_apps.sh
+      timeout: 300
+      runas: root
